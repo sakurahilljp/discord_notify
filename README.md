@@ -8,7 +8,16 @@ Command-line argument parsing is built using [`github.com/sakurahilljp/docopt-go
 
 ## 🚀 Installation & Building
 
-### Build from source
+### Using Makefile (Recommended)
+```bash
+make build    # Build the binary
+make test     # Run unit tests
+make fmt      # Format source code
+make lint     # Run go vet
+make clean    # Remove built binary
+```
+
+### Build from source manually
 ```bash
 git clone <repository_url>
 cd discord_notify
