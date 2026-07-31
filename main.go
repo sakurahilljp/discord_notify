@@ -16,7 +16,7 @@ import (
 
 const version = "1.0.0"
 
-const usage = `discord_notify - Short message sender CLI for Discord.
+const usage = `discord_notify - A simple CLI tool to send short messages to Discord text channels.
 
 Usage:
   discord_notify [options] [<message>]
@@ -70,17 +70,17 @@ type DiscordErrorResponse struct {
 func main() {
 	cfg, err := parseArgs(os.Args[1:])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
 	if err := sendMessage(cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "送信失敗: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Send failed: %v\n", err)
 		os.Exit(1)
 	}
 
 	if cfg.Verbose {
-		fmt.Println("メッセージを正常に送信しました。")
+		fmt.Println("Message sent successfully.")
 	}
 }
 
@@ -105,7 +105,7 @@ func parseArgs(argv []string) (*Config, error) {
 	avatar, _ := opts.String("--avatar")
 	verbose, _ := opts.Bool("--verbose")
 
-	// 1. 環境変数からのデフォルト値取得
+	// 1. Fallback to environment variables if flags are empty
 	cfg.WebhookURL = getFirstNonEmpty(webhook, os.Getenv("DISCORD_WEBHOOK_URL"))
 	cfg.BotToken = getFirstNonEmpty(token, os.Getenv("DISCORD_BOT_TOKEN"))
 	cfg.ChannelID = getFirstNonEmpty(channel, os.Getenv("DISCORD_CHANNEL_ID"))
@@ -113,7 +113,7 @@ func parseArgs(argv []string) (*Config, error) {
 	cfg.AvatarURL = getFirstNonEmpty(avatar, os.Getenv("DISCORD_AVATAR_URL"))
 	cfg.Verbose = verbose
 
-	// 2. メッセージの優先度: --message > <message> 位置引数 > 標準入力
+	// 2. Resolve message priority: --message > <message> positional argument > stdin
 	if messageOpt != "" {
 		cfg.Message = messageOpt
 	} else if messageArg != "" {
@@ -121,19 +121,19 @@ func parseArgs(argv []string) (*Config, error) {
 	} else {
 		stdinMsg, err := readStdin()
 		if err != nil {
-			return nil, fmt.Errorf("標準入力の読み込みに失敗しました: %w", err)
+			return nil, fmt.Errorf("failed to read from standard input: %w", err)
 		}
 		cfg.Message = stdinMsg
 	}
 
-	// メッセージバリデーション
+	// Validate message
 	if strings.TrimSpace(cfg.Message) == "" {
-		return nil, errors.New("送信するメッセージが指定されていません")
+		return nil, errors.New("no message specified")
 	}
 
-	// 認証情報バリデーション
+	// Validate credentials
 	if cfg.WebhookURL == "" && (cfg.BotToken == "" || cfg.ChannelID == "") {
-		return nil, errors.New("Webhook URL または (Bot Token と Channel ID のペア) のいずれかを指定してください")
+		return nil, errors.New("must specify either a Webhook URL or both Bot Token and Channel ID")
 	}
 
 	return cfg, nil
@@ -185,18 +185,18 @@ func sendWebhookMessage(client *http.Client, cfg *Config) error {
 
 	jsonBytes, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("JSONのエンコードに失敗しました: %w", err)
+		return fmt.Errorf("failed to encode JSON payload: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, cfg.WebhookURL, bytes.NewBuffer(jsonBytes))
 	if err != nil {
-		return fmt.Errorf("リクエストの作成に失敗しました: %w", err)
+		return fmt.Errorf("failed to create HTTP request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("HTTPリクエストエラー: %w", err)
+		return fmt.Errorf("HTTP request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -204,9 +204,9 @@ func sendWebhookMessage(client *http.Client, cfg *Config) error {
 		body, _ := io.ReadAll(resp.Body)
 		var apiErr DiscordErrorResponse
 		if json.Unmarshal(body, &apiErr) == nil && apiErr.Message != "" {
-			return fmt.Errorf("Discord API エラー (ステータス %d): %s (コード: %d)", resp.StatusCode, apiErr.Message, apiErr.Code)
+			return fmt.Errorf("Discord API error (status %d): %s (code: %d)", resp.StatusCode, apiErr.Message, apiErr.Code)
 		}
-		return fmt.Errorf("送信失敗 (ステータス %d): %s", resp.StatusCode, string(body))
+		return fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
@@ -221,12 +221,12 @@ func sendBotMessage(client *http.Client, cfg *Config) error {
 
 	jsonBytes, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("JSONのエンコードに失敗しました: %w", err)
+		return fmt.Errorf("failed to encode JSON payload: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, apiURL, bytes.NewBuffer(jsonBytes))
 	if err != nil {
-		return fmt.Errorf("リクエストの作成に失敗しました: %w", err)
+		return fmt.Errorf("failed to create HTTP request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -234,7 +234,7 @@ func sendBotMessage(client *http.Client, cfg *Config) error {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("HTTPリクエストエラー: %w", err)
+		return fmt.Errorf("HTTP request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -242,9 +242,9 @@ func sendBotMessage(client *http.Client, cfg *Config) error {
 		body, _ := io.ReadAll(resp.Body)
 		var apiErr DiscordErrorResponse
 		if json.Unmarshal(body, &apiErr) == nil && apiErr.Message != "" {
-			return fmt.Errorf("Discord API エラー (ステータス %d): %s (コード: %d)", resp.StatusCode, apiErr.Message, apiErr.Code)
+			return fmt.Errorf("Discord API error (status %d): %s (code: %d)", resp.StatusCode, apiErr.Message, apiErr.Code)
 		}
-		return fmt.Errorf("送信失敗 (ステータス %d): %s", resp.StatusCode, string(body))
+		return fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	return nil

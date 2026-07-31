@@ -1,93 +1,101 @@
 # discord_notify
 
-DiscordのText Channelにメッセージを送信するための軽量なGolang製CLIツールです。  
-コマンドライン引数解析には [`github.com/sakurahilljp/docopt-go`](https://github.com/sakurahilljp/docopt-go) を使用しています。
+A lightweight command-line interface (CLI) tool written in Go to send short messages to Discord text channels.
+
+Command-line argument parsing is built using [`github.com/sakurahilljp/docopt-go`](https://github.com/sakurahilljp/docopt-go).
 
 ---
 
-## 🚀 インストール / ビルド
+## 🚀 Installation & Building
 
-### ソースコードからビルド
+### Build from source
 ```bash
 git clone <repository_url>
 cd discord_notify
 go build -o discord_notify .
 ```
 
-### システムにインストール
+### Install globally
 ```bash
 go install .
 ```
 
 ---
 
-## 📋 使い方
+## 📋 Usage
 
-### ヘルプ表示 / バージョン表示
+### Show Help / Version
 ```bash
 ./discord_notify --help
 ./discord_notify --version
 ```
 
-### 1. Webhook を使用する場合（最も簡単）
+### 1. Using Webhook (Easiest)
 
-Discordの「チャンネル設定」→「連携」→「ウェブフック」からWebhook URLを取得して使用します。
+Obtain a Webhook URL from Discord channel settings (`Edit Channel` -> `Integrations` -> `Webhooks`).
 
-#### コマンドライン引数で送信
+#### Send via command argument
 ```bash
-./discord_notify -w "https://discord.com/api/webhooks/..." "こんにちは！"
+./discord_notify -w "https://discord.com/api/webhooks/..." "Hello from CLI!"
 ```
 
-#### 環境変数を事前に設定して送信
+#### Send using environment variable
 ```bash
 export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
 
-./discord_notify "ビルド処理が完了しました。"
+./discord_notify "Build process completed successfully."
 ```
 
-#### カスタムのユーザー名とアバター画像を指定して送信 (Webhook限定)
+#### Customize sender username and avatar (Webhook only)
 ```bash
 ./discord_notify -w "https://discord.com/api/webhooks/..." \
   -u "CI Bot" \
   -a "https://example.com/avatar.png" \
-  "テストが成功しました。"
+  "Tests passed successfully."
 ```
 
 ---
 
-### 2. Bot Token + Channel ID を使用する場合
+### 2. Using Bot Token + Channel ID
 
-Discord Developer Portalで作成したBot Tokenと送信先のText Channel IDを使用します。
+Use a Bot Token generated in the Discord Developer Portal along with the target Text Channel ID.
 
-#### コマンドライン引数で送信
+#### Send via command options
 ```bash
-./discord_notify -t "YOUR_BOT_TOKEN" -c "YOUR_CHANNEL_ID" "Botからの通知です。"
+./discord_notify -t "YOUR_BOT_TOKEN" -c "YOUR_CHANNEL_ID" "Notification from bot."
 ```
 
-#### 環境変数で設定して送信
+#### Send using environment variables
 ```bash
 export DISCORD_BOT_TOKEN="YOUR_BOT_TOKEN"
 export DISCORD_CHANNEL_ID="YOUR_CHANNEL_ID"
 
-./discord_notify "デプロイが成功しました。"
+./discord_notify "Deployment finished."
 ```
 
 ---
 
-### 3. パイプ（標準入力）からの送信
+### 3. Piping from standard input (stdin)
+
+Pipe log outputs or script results directly to Discord.
 
 ```bash
-echo "サーバーのディスク使用率が80%を超えました。" | ./discord_notify -w "https://discord.com/api/webhooks/..."
+echo "Disk usage exceeded 80%." | ./discord_notify -w "https://discord.com/api/webhooks/..."
 ```
 
 ---
 
-## ⚙️ オプション & 環境変数一覧
+## ⚙️ Options & Environment Variables
 
 ```
+Usage:
+  discord_notify [options] [<message>]
+  discord_notify -h | --help
+  discord_notify --version
+
 Options:
-  -h --help             Show help message.
-  --version             Show version.
+  -h --help             Show this help message and exit.
+  --version             Show version and exit.
   -w --webhook=<url>    Discord Webhook URL.
   -t --token=<token>    Discord Bot Token.
   -c --channel=<id>     Discord Channel ID.
@@ -95,4 +103,19 @@ Options:
   -u --username=<name>  Sender username (Webhook only).
   -a --avatar=<url>     Avatar image URL (Webhook only).
   -v --verbose          Show verbose output log.
+
+Environment Variables:
+  DISCORD_WEBHOOK_URL   Discord Webhook URL
+  DISCORD_BOT_TOKEN     Discord Bot Token
+  DISCORD_CHANNEL_ID    Discord Channel ID
+  DISCORD_USERNAME      Sender username (Webhook only)
+  DISCORD_AVATAR_URL    Avatar image URL (Webhook only)
+```
+
+---
+
+## 🧪 Running Tests
+
+```bash
+go test -v ./...
 ```
