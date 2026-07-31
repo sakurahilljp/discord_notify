@@ -102,11 +102,7 @@ func main() {
 }
 
 func parseArgs(argv []string) (*Config, error) {
-	parser := &docopt.Parser{
-		HelpHandler: docopt.PrintHelpOnly,
-	}
-
-	opts, err := parser.ParseArgs(usage, argv, version)
+	opts, err := docopt.ParseArgs(usage, argv, version)
 	if err != nil {
 		return nil, err
 	}
