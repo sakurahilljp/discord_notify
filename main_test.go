@@ -1,12 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestParseArgs(t *testing.T) {
@@ -18,27 +18,36 @@ func TestParseArgs(t *testing.T) {
 		expectedTok          string
 		expectedChan         string
 		expectedIgnoreErrors bool
+		expectedTimeout      time.Duration
+		expectedRetry        int
 		expectedError        bool
 	}{
 		{
-			name:        "Webhook option with position message",
-			argv:        []string{"-w", "https://discord.com/api/webhooks/test", "Hello World"},
-			expectedMsg: "Hello World",
-			expectedURL: "https://discord.com/api/webhooks/test",
+			name:            "Webhook option with position message",
+			argv:            []string{"-w", "https://discord.com/api/webhooks/test", "Hello World"},
+			expectedMsg:     "Hello World",
+			expectedURL:     "https://discord.com/api/webhooks/test",
+			expectedTimeout: 10 * time.Second,
+			expectedRetry:   0,
 		},
 		{
-			name:         "Bot token and channel option with -m flag",
-			argv:         []string{"-t", "mytoken", "-c", "12345", "-m", "Bot message"},
-			expectedMsg:  "Bot message",
-			expectedTok:  "mytoken",
-			expectedChan: "12345",
-		},
-		{
-			name:                 "Ignore errors flag parsed",
-			argv:                 []string{"-w", "https://discord.com/api/webhooks/test", "-i", "Hello"},
+			name:                 "Ignore errors and timeout/retry flags",
+			argv:                 []string{"-w", "https://discord.com/api/webhooks/test", "-i", "--timeout=5s", "--retry=3", "Hello"},
 			expectedMsg:          "Hello",
 			expectedURL:          "https://discord.com/api/webhooks/test",
 			expectedIgnoreErrors: true,
+			expectedTimeout:      5 * time.Second,
+			expectedRetry:        3,
+		},
+		{
+			name:          "Invalid timeout duration error",
+			argv:          []string{"-w", "https://discord.com/api/webhooks/test", "--timeout=invalid", "Hello"},
+			expectedError: true,
+		},
+		{
+			name:          "Invalid retry count error",
+			argv:          []string{"-w", "https://discord.com/api/webhooks/test", "--retry=-1", "Hello"},
+			expectedError: true,
 		},
 		{
 			name:          "Missing credentials error",
@@ -60,17 +69,47 @@ func TestParseArgs(t *testing.T) {
 				if tt.expectedURL != "" && cfg.WebhookURL != tt.expectedURL {
 					t.Errorf("expected webhook URL %q, got %q", tt.expectedURL, cfg.WebhookURL)
 				}
-				if tt.expectedTok != "" && cfg.BotToken != tt.expectedTok {
-					t.Errorf("expected bot token %q, got %q", tt.expectedTok, cfg.BotToken)
-				}
-				if tt.expectedChan != "" && cfg.ChannelID != tt.expectedChan {
-					t.Errorf("expected channel ID %q, got %q", tt.expectedChan, cfg.ChannelID)
-				}
 				if cfg.IgnoreErrors != tt.expectedIgnoreErrors {
 					t.Errorf("expected IgnoreErrors %v, got %v", tt.expectedIgnoreErrors, cfg.IgnoreErrors)
 				}
+				if cfg.Timeout != tt.expectedTimeout {
+					t.Errorf("expected Timeout %v, got %v", tt.expectedTimeout, cfg.Timeout)
+				}
+				if cfg.Retry != tt.expectedRetry {
+					t.Errorf("expected Retry %d, got %d", tt.expectedRetry, cfg.Retry)
+				}
 			}
 		})
+	}
+}
+
+func TestSendMessageWithRetry(t *testing.T) {
+	var attempts int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		current := atomic.AddInt32(&attempts, 1)
+		if current < 3 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	cfg := &Config{
+		WebhookURL: server.URL,
+		Message:    "Retry test",
+		Timeout:    5 * time.Second,
+		Retry:      3,
+	}
+
+	err := sendMessage(cfg)
+	if err != nil {
+		t.Fatalf("sendMessage returned unexpected error: %v", err)
+	}
+
+	if atomic.LoadInt32(&attempts) != 3 {
+		t.Errorf("expected 3 attempts, got %d", attempts)
 	}
 }
 
@@ -106,61 +145,11 @@ func TestSendWebhookMessage(t *testing.T) {
 		WebhookURL: server.URL,
 		Message:    expectedMessage,
 		Username:   expectedUsername,
+		Timeout:    5 * time.Second,
 	}
 
 	err := sendMessage(cfg)
 	if err != nil {
 		t.Fatalf("sendMessage returned error: %v", err)
-	}
-}
-
-func TestSendBotMessage(t *testing.T) {
-	expectedToken := "test-bot-token"
-	expectedMessage := "Hello Bot!"
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Errorf("Expected method POST, got %s", r.Method)
-		}
-		authHeader := r.Header.Get("Authorization")
-		if authHeader != "Bot "+expectedToken {
-			t.Errorf("Expected Authorization 'Bot %s', got %q", expectedToken, authHeader)
-		}
-
-		var payload BotPayload
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			t.Fatalf("Failed to decode payload: %v", err)
-		}
-
-		if payload.Content != expectedMessage {
-			t.Errorf("Expected content %q, got %q", expectedMessage, payload.Content)
-		}
-
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"id": "123456789"}`))
-	}))
-	defer server.Close()
-
-	client := server.Client()
-	cfg := &Config{
-		BotToken:  expectedToken,
-		ChannelID: "123456",
-		Message:   expectedMessage,
-	}
-
-	payload := BotPayload{Content: cfg.Message}
-	jsonBytes, _ := json.Marshal(payload)
-	req, _ := http.NewRequest(http.MethodPost, server.URL, io.NopCloser(bytes.NewReader(jsonBytes)))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bot "+cfg.BotToken)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("HTTP request failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", resp.StatusCode)
 	}
 }

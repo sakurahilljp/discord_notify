@@ -112,6 +112,8 @@ Options:
   -u --username=<name>  Sender username (Webhook only).
   -a --avatar=<url>     Avatar image URL (Webhook only).
   -i --ignore-errors    Ignore send errors and exit with code 0 (prints warning).
+  --timeout=<duration>  HTTP request timeout [default: 10s].
+  --retry=<count>       Number of retry attempts on failure [default: 0].
   -v --verbose          Show verbose output log.
 
 Environment Variables:
