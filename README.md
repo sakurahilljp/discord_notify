@@ -1,7 +1,7 @@
 # discord_notify
 
 DiscordのText Channelにメッセージを送信するための軽量なGolang製CLIツールです。  
-**Webhook方式** および **Discord Bot Token方式** の両方に対応しており、コマンド引数や標準入力（パイプ）からのメッセージ送信をサポートしています。
+コマンドライン引数解析には [`github.com/sakurahilljp/docopt-go`](https://github.com/sakurahilljp/docopt-go) を使用しています。
 
 ---
 
@@ -22,6 +22,12 @@ go install .
 ---
 
 ## 📋 使い方
+
+### ヘルプ表示 / バージョン表示
+```bash
+./discord_notify --help
+./discord_notify --version
+```
 
 ### 1. Webhook を使用する場合（最も簡単）
 
@@ -70,34 +76,23 @@ export DISCORD_CHANNEL_ID="YOUR_CHANNEL_ID"
 
 ### 3. パイプ（標準入力）からの送信
 
-コマンドの実行結果やログをパイプ経由でDiscordに直接送信できます。
-
 ```bash
 echo "サーバーのディスク使用率が80%を超えました。" | ./discord_notify -w "https://discord.com/api/webhooks/..."
 ```
 
-```bash
-cat build.log | ./discord_notify
+---
+
+## ⚙️ オプション & 環境変数一覧
+
 ```
-
----
-
-## ⚙️ コマンドラインオプション & 環境変数一覧
-
-| オプション (短縮) | オプション (ロング) | 対応する環境変数 | 説明 |
-|---|---|---|---|
-| `-w` | `-webhook` | `DISCORD_WEBHOOK_URL` | Discord Webhook URL |
-| `-t` | `-token` | `DISCORD_BOT_TOKEN` | Discord Bot Token |
-| `-c` | `-channel` | `DISCORD_CHANNEL_ID` | 送信先のText Channel ID |
-| `-m` | `-message` | - | 送信メッセージ |
-| `-u` | `-username` | `DISCORD_USERNAME` | Webhook表示ユーザー名 |
-| `-a` | `-avatar` | `DISCORD_AVATAR_URL` | Webhook表示アバター画像URL |
-| `-v` | `-verbose` | - | 詳細な送信完了メッセージを出力 |
-
----
-
-## 🧪 テストの実行
-
-```bash
-go test -v ./...
+Options:
+  -h --help             Show help message.
+  --version             Show version.
+  -w --webhook=<url>    Discord Webhook URL.
+  -t --token=<token>    Discord Bot Token.
+  -c --channel=<id>     Discord Channel ID.
+  -m --message=<msg>    Message to send.
+  -u --username=<name>  Sender username (Webhook only).
+  -a --avatar=<url>     Avatar image URL (Webhook only).
+  -v --verbose          Show verbose output log.
 ```

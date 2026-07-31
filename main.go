@@ -4,14 +4,43 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/sakurahilljp/docopt-go"
 )
+
+const version = "1.0.0"
+
+const usage = `discord_notify - Short message sender CLI for Discord.
+
+Usage:
+  discord_notify [options] [<message>]
+  discord_notify -h | --help
+  discord_notify --version
+
+Options:
+  -h --help             Show this help message and exit.
+  --version             Show version and exit.
+  -w --webhook=<url>    Discord Webhook URL.
+  -t --token=<token>    Discord Bot Token.
+  -c --channel=<id>     Discord Channel ID.
+  -m --message=<msg>    Message to send.
+  -u --username=<name>  Sender username (Webhook only).
+  -a --avatar=<url>     Avatar image URL (Webhook only).
+  -v --verbose          Show verbose output log.
+
+Environment Variables:
+  DISCORD_WEBHOOK_URL   Discord Webhook URL
+  DISCORD_BOT_TOKEN     Discord Bot Token
+  DISCORD_CHANNEL_ID    Discord Channel ID
+  DISCORD_USERNAME      Sender username (Webhook only)
+  DISCORD_AVATAR_URL    Avatar image URL (Webhook only)
+`
 
 type Config struct {
 	WebhookURL string
@@ -39,10 +68,9 @@ type DiscordErrorResponse struct {
 }
 
 func main() {
-	cfg, err := parseFlags()
+	cfg, err := parseArgs(os.Args[1:])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n\n", err)
-		flag.Usage()
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -56,62 +84,40 @@ func main() {
 	}
 }
 
-func parseFlags() (*Config, error) {
-	cfg := &Config{}
-
-	var webhookFlag, tokenFlag, channelFlag, messageFlag, usernameFlag, avatarFlag string
-	var verboseFlag bool
-
-	flag.StringVar(&webhookFlag, "w", "", "Discord Webhook URL (短縮)")
-	flag.StringVar(&webhookFlag, "webhook", "", "Discord Webhook URL")
-
-	flag.StringVar(&tokenFlag, "t", "", "Discord Bot Token (短縮)")
-	flag.StringVar(&tokenFlag, "token", "", "Discord Bot Token")
-
-	flag.StringVar(&channelFlag, "c", "", "Discord Channel ID (短縮)")
-	flag.StringVar(&channelFlag, "channel", "", "Discord Channel ID")
-
-	flag.StringVar(&messageFlag, "m", "", "送信するメッセージ (短縮)")
-	flag.StringVar(&messageFlag, "message", "", "送信するメッセージ")
-
-	flag.StringVar(&usernameFlag, "u", "", "送信者名 [Webhook用] (短縮)")
-	flag.StringVar(&usernameFlag, "username", "", "送信者名 [Webhook用]")
-
-	flag.StringVar(&avatarFlag, "a", "", "アバター画像URL [Webhook用] (短縮)")
-	flag.StringVar(&avatarFlag, "avatar", "", "アバター画像URL [Webhook用]")
-
-	flag.BoolVar(&verboseFlag, "v", false, "詳細ログを表示 (短縮)")
-	flag.BoolVar(&verboseFlag, "verbose", false, "詳細ログを表示")
-
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "使用方法:\n")
-		fmt.Fprintf(os.Stderr, "  discord_notify [オプション] [メッセージ]\n")
-		fmt.Fprintf(os.Stderr, "  echo \"メッセージ\" | discord_notify [オプション]\n\n")
-		fmt.Fprintf(os.Stderr, "環境変数:\n")
-		fmt.Fprintf(os.Stderr, "  DISCORD_WEBHOOK_URL : Discord Webhook URL\n")
-		fmt.Fprintf(os.Stderr, "  DISCORD_BOT_TOKEN   : Discord Bot Token\n")
-		fmt.Fprintf(os.Stderr, "  DISCORD_CHANNEL_ID  : 送信先 Text Channel ID\n")
-		fmt.Fprintf(os.Stderr, "  DISCORD_USERNAME    : 表示するユーザー名 (Webhook用)\n")
-		fmt.Fprintf(os.Stderr, "  DISCORD_AVATAR_URL  : 表示するアバターURL (Webhook用)\n\n")
-		fmt.Fprintf(os.Stderr, "オプション:\n")
-		flag.PrintDefaults()
+func parseArgs(argv []string) (*Config, error) {
+	parser := &docopt.Parser{
+		HelpHandler: docopt.PrintHelpOnly,
 	}
 
-	flag.Parse()
+	opts, err := parser.ParseArgs(usage, argv, version)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := &Config{}
+
+	webhook, _ := opts.String("--webhook")
+	token, _ := opts.String("--token")
+	channel, _ := opts.String("--channel")
+	messageOpt, _ := opts.String("--message")
+	messageArg, _ := opts.String("<message>")
+	username, _ := opts.String("--username")
+	avatar, _ := opts.String("--avatar")
+	verbose, _ := opts.Bool("--verbose")
 
 	// 1. 環境変数からのデフォルト値取得
-	cfg.WebhookURL = getFirstNonEmpty(webhookFlag, os.Getenv("DISCORD_WEBHOOK_URL"))
-	cfg.BotToken = getFirstNonEmpty(tokenFlag, os.Getenv("DISCORD_BOT_TOKEN"))
-	cfg.ChannelID = getFirstNonEmpty(channelFlag, os.Getenv("DISCORD_CHANNEL_ID"))
-	cfg.Username = getFirstNonEmpty(usernameFlag, os.Getenv("DISCORD_USERNAME"))
-	cfg.AvatarURL = getFirstNonEmpty(avatarFlag, os.Getenv("DISCORD_AVATAR_URL"))
-	cfg.Verbose = verboseFlag
+	cfg.WebhookURL = getFirstNonEmpty(webhook, os.Getenv("DISCORD_WEBHOOK_URL"))
+	cfg.BotToken = getFirstNonEmpty(token, os.Getenv("DISCORD_BOT_TOKEN"))
+	cfg.ChannelID = getFirstNonEmpty(channel, os.Getenv("DISCORD_CHANNEL_ID"))
+	cfg.Username = getFirstNonEmpty(username, os.Getenv("DISCORD_USERNAME"))
+	cfg.AvatarURL = getFirstNonEmpty(avatar, os.Getenv("DISCORD_AVATAR_URL"))
+	cfg.Verbose = verbose
 
-	// 2. メッセージの取得優先度: -m / -message > 位置引数 > 標準入力
-	if messageFlag != "" {
-		cfg.Message = messageFlag
-	} else if flag.NArg() > 0 {
-		cfg.Message = strings.Join(flag.Args(), " ")
+	// 2. メッセージの優先度: --message > <message> 位置引数 > 標準入力
+	if messageOpt != "" {
+		cfg.Message = messageOpt
+	} else if messageArg != "" {
+		cfg.Message = messageArg
 	} else {
 		stdinMsg, err := readStdin()
 		if err != nil {
@@ -148,7 +154,6 @@ func readStdin() (string, error) {
 		return "", err
 	}
 
-	// ターミナル入力ではなくパイプ等からの入力があるか確認
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 		bytes, err := io.ReadAll(os.Stdin)
 		if err != nil {
