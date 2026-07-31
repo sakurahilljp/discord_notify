@@ -32,6 +32,7 @@ Options:
   -m --message=<msg>    Message to send.
   -u --username=<name>  Sender username (Webhook only).
   -a --avatar=<url>     Avatar image URL (Webhook only).
+  -i --ignore-errors    Ignore send errors and exit with code 0 (prints warning).
   -v --verbose          Show verbose output log.
 
 Environment Variables:
@@ -43,13 +44,14 @@ Environment Variables:
 `
 
 type Config struct {
-	WebhookURL string
-	BotToken   string
-	ChannelID  string
-	Message    string
-	Username   string
-	AvatarURL  string
-	Verbose    bool
+	WebhookURL   string
+	BotToken     string
+	ChannelID    string
+	Message      string
+	Username     string
+	AvatarURL    string
+	IgnoreErrors bool
+	Verbose      bool
 }
 
 type WebhookPayload struct {
@@ -75,6 +77,10 @@ func main() {
 	}
 
 	if err := sendMessage(cfg); err != nil {
+		if cfg.IgnoreErrors {
+			fmt.Fprintf(os.Stderr, "Warning: Send failed: %v\n", err)
+			os.Exit(0)
+		}
 		fmt.Fprintf(os.Stderr, "Send failed: %v\n", err)
 		os.Exit(1)
 	}
@@ -103,6 +109,7 @@ func parseArgs(argv []string) (*Config, error) {
 	messageArg, _ := opts.String("<message>")
 	username, _ := opts.String("--username")
 	avatar, _ := opts.String("--avatar")
+	ignoreErrors, _ := opts.Bool("--ignore-errors")
 	verbose, _ := opts.Bool("--verbose")
 
 	// 1. Fallback to environment variables if flags are empty
@@ -111,6 +118,7 @@ func parseArgs(argv []string) (*Config, error) {
 	cfg.ChannelID = getFirstNonEmpty(channel, os.Getenv("DISCORD_CHANNEL_ID"))
 	cfg.Username = getFirstNonEmpty(username, os.Getenv("DISCORD_USERNAME"))
 	cfg.AvatarURL = getFirstNonEmpty(avatar, os.Getenv("DISCORD_AVATAR_URL"))
+	cfg.IgnoreErrors = ignoreErrors
 	cfg.Verbose = verbose
 
 	// 2. Resolve message priority: --message > <message> positional argument > stdin

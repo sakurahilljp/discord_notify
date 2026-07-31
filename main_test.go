@@ -11,13 +11,14 @@ import (
 
 func TestParseArgs(t *testing.T) {
 	tests := []struct {
-		name          string
-		argv          []string
-		expectedMsg   string
-		expectedURL   string
-		expectedTok   string
-		expectedChan  string
-		expectedError bool
+		name                 string
+		argv                 []string
+		expectedMsg          string
+		expectedURL          string
+		expectedTok          string
+		expectedChan         string
+		expectedIgnoreErrors bool
+		expectedError        bool
 	}{
 		{
 			name:        "Webhook option with position message",
@@ -31,6 +32,13 @@ func TestParseArgs(t *testing.T) {
 			expectedMsg:  "Bot message",
 			expectedTok:  "mytoken",
 			expectedChan: "12345",
+		},
+		{
+			name:                 "Ignore errors flag parsed",
+			argv:                 []string{"-w", "https://discord.com/api/webhooks/test", "-i", "Hello"},
+			expectedMsg:          "Hello",
+			expectedURL:          "https://discord.com/api/webhooks/test",
+			expectedIgnoreErrors: true,
 		},
 		{
 			name:          "Missing credentials error",
@@ -57,6 +65,9 @@ func TestParseArgs(t *testing.T) {
 				}
 				if tt.expectedChan != "" && cfg.ChannelID != tt.expectedChan {
 					t.Errorf("expected channel ID %q, got %q", tt.expectedChan, cfg.ChannelID)
+				}
+				if cfg.IgnoreErrors != tt.expectedIgnoreErrors {
+					t.Errorf("expected IgnoreErrors %v, got %v", tt.expectedIgnoreErrors, cfg.IgnoreErrors)
 				}
 			}
 		})

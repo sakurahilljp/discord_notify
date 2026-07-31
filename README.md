@@ -111,6 +111,7 @@ Options:
   -m --message=<msg>    Message to send.
   -u --username=<name>  Sender username (Webhook only).
   -a --avatar=<url>     Avatar image URL (Webhook only).
+  -i --ignore-errors    Ignore send errors and exit with code 0 (prints warning).
   -v --verbose          Show verbose output log.
 
 Environment Variables:
