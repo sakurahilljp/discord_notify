@@ -15,7 +15,7 @@ import (
 	"discord_notify/discord"
 )
 
-const version = "1.0.0"
+const version = "1.1.0"
 
 const usage = `discord_notify - A simple CLI tool to send short messages to Discord text channels.
 
