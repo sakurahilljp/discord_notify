@@ -1,37 +1,195 @@
 # discord_notify
 
-A lightweight command-line interface (CLI) tool written in Go to send short messages to Discord text channels.
+A Go package and CLI tool to send short messages to Discord text channels via Webhooks or Bot Token.
 
 Command-line argument parsing is built using [`github.com/sakurahilljp/docopt-go`](https://github.com/sakurahilljp/docopt-go).
 
 ---
 
-## 🚀 Installation & Building
+## 📦 Using as a Go Library / Package
+
+You can import and use `discord_notify/discord` directly in your Go applications.
+
+### Installation
+```bash
+go get github.com/sakurahilljp/discord_notify
+```
+
+### 1. Send using Environment Variables
+
+The `discord` package supports the same environment variables as the CLI. You can send messages with minimal code or inspect and override configuration:
+
+#### Method A: `discord.SendFromEnv` (Shortest one-liner)
+Reads credentials and defaults directly from environment variables. You can optionally pass functional options like `WithRetry`, `WithTimeout`, etc.
+```go
+package main
+
+import (
+	"context"
+	"log"
+	"time"
+
+	"github.com/sakurahilljp/discord_notify/discord"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Automatically reads DISCORD_WEBHOOK_URL or DISCORD_BOT_TOKEN & DISCORD_CHANNEL_ID
+	err := discord.SendFromEnv(ctx, "Build succeeded!",
+		discord.WithRetry(3),
+		discord.WithTimeout(5*time.Second),
+	)
+	if err != nil {
+		log.Fatalf("failed to send: %v", err)
+	}
+}
+```
+
+#### Method B: `discord.NewConfigFromEnv` (Explicit configuration loading)
+Loads configuration populated from environment variables, which can then be inspected or modified before sending.
+```go
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/sakurahilljp/discord_notify/discord"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Load from environment variables
+	cfg := discord.NewConfigFromEnv()
+	cfg.Retry = 3
+	cfg.Username = "Custom Worker" // override username
+
+	if err := discord.Send(ctx, cfg, "Task completed."); err != nil {
+		log.Fatalf("failed to send: %v", err)
+	}
+}
+```
+
+#### Method C: Automatic Environment Fallback in `NewClient` / `Send`
+When using `discord.NewClient(cfg)` or `discord.Send(ctx, cfg, msg)`, any fields left empty (such as `WebhookURL`, `BotToken`, `ChannelID`, `Username`, `AvatarURL`) will automatically fall back to the corresponding environment variables.
+```go
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/sakurahilljp/discord_notify/discord"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// WebhookURL / Bot credentials will automatically fall back to environment variables
+	cfg := discord.Config{
+		Retry: 2,
+	}
+	if err := discord.Send(ctx, cfg, "Message with env fallback."); err != nil {
+		log.Fatalf("failed to send: %v", err)
+	}
+}
+```
+
+---
+
+### 2. Send via Webhook (Explicit URL)
+```go
+package main
+
+import (
+	"context"
+	"log"
+	"time"
+
+	"github.com/sakurahilljp/discord_notify/discord"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// 1. One-liner with functional options
+	err := discord.SendWebhook(ctx, "https://discord.com/api/webhooks/...", "Build completed!",
+		discord.WithUsername("CI Bot"),
+		discord.WithRetry(3),
+		discord.WithTimeout(5*time.Second),
+	)
+	if err != nil {
+		log.Fatalf("failed to send: %v", err)
+	}
+
+	// 2. Using Config struct
+	cfg := discord.Config{
+		WebhookURL: "https://discord.com/api/webhooks/...",
+		Username:   "Server Monitor",
+		Retry:      3,
+	}
+	if err := discord.Send(ctx, cfg, "Server restarted."); err != nil {
+		log.Fatalf("failed to send: %v", err)
+	}
+
+	// 3. Creating a reusable Client instance
+	client, err := discord.NewClient(cfg)
+	if err != nil {
+		log.Fatalf("failed to create client: %v", err)
+	}
+	_ = client.Send(ctx, "Message 1")
+	_ = client.Send(ctx, "Message 2")
+}
+```
+
+---
+
+### 3. Send via Discord Bot API (Explicit Token & Channel)
+```go
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/sakurahilljp/discord_notify/discord"
+)
+
+func main() {
+	ctx := context.Background()
+
+	err := discord.SendBotMessage(ctx, "YOUR_BOT_TOKEN", "YOUR_CHANNEL_ID", "Hello from bot!",
+		discord.WithRetry(2),
+	)
+	if err != nil {
+		log.Fatalf("failed to send: %v", err)
+	}
+}
+```
+
+---
+
+## 🚀 CLI Installation & Building
 
 ### Using Makefile (Recommended)
 ```bash
-make build    # Build the binary
+make build    # Build binary to ./discord_notify
 make test     # Run unit tests
 make fmt      # Format source code
 make lint     # Run go vet
 make clean    # Remove built binary
 ```
 
-### Build from source manually
+### Install CLI binary globally
 ```bash
-git clone <repository_url>
-cd discord_notify
-go build -o discord_notify .
-```
-
-### Install globally
-```bash
-go install .
+go install ./cmd/discord_notify
 ```
 
 ---
 
-## 📋 Usage
+## 📋 CLI Usage
 
 ### Show Help / Version
 ```bash
@@ -94,41 +252,25 @@ echo "Disk usage exceeded 80%." | ./discord_notify -w "https://discord.com/api/w
 
 ---
 
-## ⚙️ Options & Environment Variables
+## ⚙️ Supported Environment Variables
 
-```
-Usage:
-  discord_notify [options] [<message>]
-  discord_notify -h | --help
-  discord_notify --version
+Both the CLI and the `discord` Go package support the following environment variables:
 
-Options:
-  -h --help             Show this help message and exit.
-  --version             Show version and exit.
-  -w --webhook=<url>    Discord Webhook URL.
-  -t --token=<token>    Discord Bot Token.
-  -c --channel=<id>     Discord Channel ID.
-  -m --message=<msg>    Message to send.
-  -u --username=<name>  Sender username (Webhook only).
-  -a --avatar=<url>     Avatar image URL (Webhook only).
-  -i --ignore-errors    Ignore send errors and exit with code 0 (prints warning).
-  --timeout=<duration>  HTTP request timeout [default: 10s].
-  --retry=<count>       Number of retry attempts on failure [default: 0].
-  -v --verbose          Show verbose output log.
-
-Environment Variables:
-  DISCORD_WEBHOOK_URL   Discord Webhook URL
-  DISCORD_BOT_TOKEN     Discord Bot Token
-  DISCORD_CHANNEL_ID    Discord Channel ID
-  DISCORD_USERNAME      Sender username (Webhook only)
-  DISCORD_AVATAR_URL    Avatar image URL (Webhook only)
-```
+| Variable | Target Config Field | Description |
+|---|---|---|
+| `DISCORD_WEBHOOK_URL` | `Config.WebhookURL` | Discord Webhook URL |
+| `DISCORD_BOT_TOKEN` | `Config.BotToken` | Discord Bot Token |
+| `DISCORD_CHANNEL_ID` | `Config.ChannelID` | Discord Text Channel ID |
+| `DISCORD_USERNAME` | `Config.Username` | Sender username (Webhook only) |
+| `DISCORD_AVATAR_URL` | `Config.AvatarURL` | Avatar image URL (Webhook only) |
 
 ---
 
 ## 🧪 Running Tests
 
 ```bash
+make test
+# or
 go test -v ./...
 ```
 
@@ -137,4 +279,3 @@ go test -v ./...
 ## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
