@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Adopted **GitHub Flow** development model, documented in [`AGENTS.md`](./AGENTS.md) and [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 - Created `discord` Go package (`discord_notify/discord`) for sending Discord messages as a reusable library.
 - Exported `Config`, `Client`, `Send`, `SendWebhook`, `SendBotMessage`, `SendFromEnv`, `NewConfigFromEnv` with functional options (`WithUsername`, `WithAvatarURL`, `WithTimeout`, `WithRetry`, `WithHTTPClient`).
 - Support environment variable fallback and loading (`DISCORD_WEBHOOK_URL`, `DISCORD_BOT_TOKEN`, `DISCORD_CHANNEL_ID`, `DISCORD_USERNAME`, `DISCORD_AVATAR_URL`) in `discord` package.

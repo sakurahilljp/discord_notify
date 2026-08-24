@@ -276,6 +276,12 @@ go test -v ./...
 
 ---
 
+## 🤝 Contributing
+
+This project follows the **GitHub Flow** model. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on branching conventions and workflow.
+
+---
+
 ## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
