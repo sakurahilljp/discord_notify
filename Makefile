@@ -1,11 +1,12 @@
 .PHONY: all build test clean install fmt lint help
 
 BINARY_NAME=discord_notify
+CMD_PATH=./cmd/discord_notify
 
 all: build
 
 build:
-	go build -o $(BINARY_NAME) .
+	go build -o $(BINARY_NAME) $(CMD_PATH)
 
 test:
 	go test -v ./...
@@ -17,7 +18,7 @@ lint:
 	go vet ./...
 
 install:
-	go install .
+	go install $(CMD_PATH)
 
 clean:
 	rm -f $(BINARY_NAME)
