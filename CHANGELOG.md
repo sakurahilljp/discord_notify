@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-24
+
 ### Added
 - Adopted **GitHub Flow** development model, documented in [`AGENTS.md`](./AGENTS.md) and [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 - Created `discord` Go package (`discord_notify/discord`) for sending Discord messages as a reusable library.
