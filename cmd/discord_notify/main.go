@@ -12,7 +12,7 @@ import (
 
 	"github.com/sakurahilljp/docopt-go"
 
-	"discord_notify/discord"
+	"github.com/sakurahilljp/discord_notify/discord"
 )
 
 const version = "1.1.0"
