@@ -8,7 +8,7 @@ Command-line argument parsing is built using [`github.com/sakurahilljp/docopt-go
 
 ## 📦 Using as a Go Library / Package
 
-You can import and use `discord_notify/discord` directly in your Go applications.
+You can import and use `github.com/sakurahilljp/discord_notify/discord` directly in your Go applications.
 
 ### Installation
 ```bash

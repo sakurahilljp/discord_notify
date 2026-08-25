@@ -1,4 +1,4 @@
-module discord_notify
+module github.com/sakurahilljp/discord_notify
 
 go 1.22
 
