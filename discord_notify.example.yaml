@@ -1,0 +1,28 @@
+# discord_notify YAML Configuration Template
+# Copy this file to '.discord_notify.yaml' or '~/.config/discord_notify/config.yaml'
+
+# Default profile to use when no -p/--profile is explicitly specified
+default_profile: dev
+
+profiles:
+  # 1. Development profile using Discord Webhook (Simplest)
+  dev:
+    webhook_url: "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
+    username: "Dev Notifier"
+    avatar_url: "https://example.com/avatar.png"
+    timeout: "5s"
+    retry: 1
+
+  # 2. Production release profile with custom sender name and more retries
+  prod:
+    webhook_url: "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
+    username: "Prod Release Bot"
+    timeout: "10s"
+    retry: 3
+
+  # 3. Bot Token + Channel ID profile (Using Discord Bot API)
+  bot-alerts:
+    bot_token: "YOUR_DISCORD_BOT_TOKEN"
+    channel_id: "YOUR_TEXT_CHANNEL_ID"
+    timeout: "15s"
+    retry: 2

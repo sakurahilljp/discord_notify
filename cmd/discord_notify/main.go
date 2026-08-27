@@ -15,7 +15,7 @@ import (
 	"github.com/sakurahilljp/discord_notify/discord"
 )
 
-const version = "1.2.0"
+const version = "1.3.0"
 
 const usage = `discord_notify - A simple CLI tool to send short messages to Discord text channels.
 
@@ -33,9 +33,13 @@ Options:
   -m --message=<msg>    Message to send.
   -u --username=<name>  Sender username (Webhook only).
   -a --avatar=<url>     Avatar image URL (Webhook only).
+  -p --profile=<name>   Use a specific profile from YAML config.
+  --config=<path>       Path to YAML configuration file.
+  --env-file=<path>     Path to .env file to load environment variables from.
+  --no-env              Disable automatic loading of .env file.
   -i --ignore-errors    Ignore send errors and exit with code 0 (prints warning).
-  --timeout=<duration>  HTTP request timeout [default: 10s].
-  --retry=<count>       Number of retry attempts on failure [default: 0].
+  --timeout=<duration>  HTTP request timeout (e.g. 10s, 1m).
+  --retry=<count>       Number of retry attempts on failure.
   -v --verbose          Show verbose output log.
 
 Environment Variables:
@@ -81,10 +85,10 @@ func parseArgs(argv []string) (*cliConfig, error) {
 		return nil, err
 	}
 
-	cfg := &cliConfig{
-		discordConfig: discord.NewConfigFromEnv(),
-	}
-
+	envFile, _ := opts.String("--env-file")
+	noEnv, _ := opts.Bool("--no-env")
+	configPath, _ := opts.String("--config")
+	profile, _ := opts.String("--profile")
 	webhook, _ := opts.String("--webhook")
 	token, _ := opts.String("--token")
 	channel, _ := opts.String("--channel")
@@ -97,44 +101,91 @@ func parseArgs(argv []string) (*cliConfig, error) {
 	retryStr, _ := opts.String("--retry")
 	verbose, _ := opts.Bool("--verbose")
 
-	// Parse --timeout
+	// 1. Load .env file
+	if envFile != "" {
+		if err := discord.LoadDotEnv(envFile); err != nil {
+			return nil, fmt.Errorf("failed to load env file %q: %w", envFile, err)
+		}
+	} else if !noEnv {
+		_ = discord.LoadDotEnvIfExists(".env")
+	}
+
+	// 2. Load YAML configuration
+	var baseConfig discord.Config
+	resolvedConfigPath := configPath
+	if resolvedConfigPath == "" {
+		if foundPath := discord.FindDefaultConfigFile(); foundPath != "" {
+			resolvedConfigPath = foundPath
+		}
+	}
+
+	if resolvedConfigPath != "" {
+		loadedCfg, err := discord.LoadYAMLProfile(resolvedConfigPath, profile)
+		if err != nil {
+			return nil, err
+		}
+		baseConfig = loadedCfg
+	} else if profile != "" {
+		return nil, fmt.Errorf("profile %q specified but no config file found", profile)
+	}
+
+	// 3. Override with environment variables
+	if v := os.Getenv(discord.EnvWebhookURL); v != "" {
+		baseConfig.WebhookURL = v
+	}
+	if v := os.Getenv(discord.EnvBotToken); v != "" {
+		baseConfig.BotToken = v
+	}
+	if v := os.Getenv(discord.EnvChannelID); v != "" {
+		baseConfig.ChannelID = v
+	}
+	if v := os.Getenv(discord.EnvUsername); v != "" {
+		baseConfig.Username = v
+	}
+	if v := os.Getenv(discord.EnvAvatarURL); v != "" {
+		baseConfig.AvatarURL = v
+	}
+
+	// 4. Override with explicit CLI flags
+	if webhook != "" {
+		baseConfig.WebhookURL = webhook
+	}
+	if token != "" {
+		baseConfig.BotToken = token
+	}
+	if channel != "" {
+		baseConfig.ChannelID = channel
+	}
+	if username != "" {
+		baseConfig.Username = username
+	}
+	if avatar != "" {
+		baseConfig.AvatarURL = avatar
+	}
+
 	if timeoutStr != "" {
 		d, err := time.ParseDuration(timeoutStr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid --timeout duration %q: %w", timeoutStr, err)
 		}
-		cfg.discordConfig.Timeout = d
+		baseConfig.Timeout = d
 	}
 
-	// Parse --retry
 	if retryStr != "" {
 		r, err := strconv.Atoi(retryStr)
 		if err != nil || r < 0 {
 			return nil, fmt.Errorf("invalid --retry count %q: must be a non-negative integer", retryStr)
 		}
-		cfg.discordConfig.Retry = r
+		baseConfig.Retry = r
 	}
 
-	// 1. Override environment variables with explicit CLI flags
-	if webhook != "" {
-		cfg.discordConfig.WebhookURL = webhook
+	cfg := &cliConfig{
+		discordConfig: baseConfig,
+		ignoreErrors:  ignoreErrors,
+		verbose:       verbose,
 	}
-	if token != "" {
-		cfg.discordConfig.BotToken = token
-	}
-	if channel != "" {
-		cfg.discordConfig.ChannelID = channel
-	}
-	if username != "" {
-		cfg.discordConfig.Username = username
-	}
-	if avatar != "" {
-		cfg.discordConfig.AvatarURL = avatar
-	}
-	cfg.ignoreErrors = ignoreErrors
-	cfg.verbose = verbose
 
-	// 2. Resolve message priority: --message > <message> positional argument > stdin
+	// 5. Resolve message priority: --message > <message> positional argument > stdin
 	if messageOpt != "" {
 		cfg.message = messageOpt
 	} else if messageArg != "" {
