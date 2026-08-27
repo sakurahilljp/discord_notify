@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exported YAML and `.env` loader helpers in `discord` package (`LoadYAMLConfig`, `LoadYAMLProfile`, `FindDefaultConfigFile`, `LoadDotEnv`, `LoadDotEnvIfExists`).
 - Added configuration templates [`discord_notify.example.yaml`](./discord_notify.example.yaml) and [`.env.example`](./.env.example).
 - Added comprehensive unit tests for image and file uploads, YAML configuration, profile selection, `.env` file loading, and CLI argument integration.
+- Added working branch cleanup rule to [`AGENTS.md`](./AGENTS.md) and [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## [1.2.0] - 2026-08-26
 
