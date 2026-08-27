@@ -8,11 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Support for image and file attachments (`-f, --file`) via multipart form-data for both Webhook and Bot API.
+- Added `WithFile` option in `discord` package for attaching images and files.
+- Support for sending files without message text.
 - Support for YAML configuration files (`.discord_notify.yaml`, `discord_notify.yaml`, `~/.config/discord_notify/config.yaml`) with multi-profile management (`-p, --profile`, `--config`).
 - Support for loading environment variables from `.env` files automatically or via `--env-file`, with `--no-env` to disable.
 - Exported YAML and `.env` loader helpers in `discord` package (`LoadYAMLConfig`, `LoadYAMLProfile`, `FindDefaultConfigFile`, `LoadDotEnv`, `LoadDotEnvIfExists`).
 - Added configuration templates [`discord_notify.example.yaml`](./discord_notify.example.yaml) and [`.env.example`](./.env.example).
-- Added unit tests for YAML configuration parsing, profile selection, `.env` file loading, and CLI argument integration.
+- Added comprehensive unit tests for image and file uploads, YAML configuration, profile selection, `.env` file loading, and CLI argument integration.
 
 ## [1.2.0] - 2026-08-26
 

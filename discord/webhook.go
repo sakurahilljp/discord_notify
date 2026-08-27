@@ -1,7 +1,6 @@
 package discord
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -23,16 +22,10 @@ func sendWebhook(ctx context.Context, client *http.Client, cfg Config, message s
 		AvatarURL: cfg.AvatarURL,
 	}
 
-	jsonBytes, err := json.Marshal(payload)
+	req, err := buildHTTPRequest(ctx, cfg.WebhookURL, "", payload, cfg.FilePath)
 	if err != nil {
-		return 0, fmt.Errorf("failed to encode JSON payload: %w", err)
+		return 0, err
 	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cfg.WebhookURL, bytes.NewBuffer(jsonBytes))
-	if err != nil {
-		return 0, fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {

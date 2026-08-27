@@ -33,6 +33,7 @@ Options:
   -m --message=<msg>    Message to send.
   -u --username=<name>  Sender username (Webhook only).
   -a --avatar=<url>     Avatar image URL (Webhook only).
+  -f --file=<path>      Attach an image or file to the message.
   -p --profile=<name>   Use a specific profile from YAML config.
   --config=<path>       Path to YAML configuration file.
   --env-file=<path>     Path to .env file to load environment variables from.
@@ -96,6 +97,7 @@ func parseArgs(argv []string) (*cliConfig, error) {
 	messageArg, _ := opts.String("<message>")
 	username, _ := opts.String("--username")
 	avatar, _ := opts.String("--avatar")
+	file, _ := opts.String("--file")
 	ignoreErrors, _ := opts.Bool("--ignore-errors")
 	timeoutStr, _ := opts.String("--timeout")
 	retryStr, _ := opts.String("--retry")
@@ -162,6 +164,9 @@ func parseArgs(argv []string) (*cliConfig, error) {
 	if avatar != "" {
 		baseConfig.AvatarURL = avatar
 	}
+	if file != "" {
+		baseConfig.FilePath = file
+	}
 
 	if timeoutStr != "" {
 		d, err := time.ParseDuration(timeoutStr)
@@ -198,9 +203,9 @@ func parseArgs(argv []string) (*cliConfig, error) {
 		cfg.message = stdinMsg
 	}
 
-	// Validate message
-	if strings.TrimSpace(cfg.message) == "" {
-		return nil, errors.New("no message specified")
+	// Validate message or file presence
+	if strings.TrimSpace(cfg.message) == "" && strings.TrimSpace(cfg.discordConfig.FilePath) == "" {
+		return nil, errors.New("no message or file specified")
 	}
 
 	// Validate credentials
