@@ -35,6 +35,12 @@ Thank you for contributing to `discord_notify`! This project follows the **GitHu
      git merge --no-ff feature/my-new-feature
      ```
 
+6. **Delete Merged Branch**:
+   - Clean up the local branch after merging:
+     ```bash
+     git branch -d feature/my-new-feature
+     ```
+
 ---
 
 ## 🏷️ Branch Naming Conventions

@@ -29,3 +29,7 @@ This repository follows the **GitHub Flow** branching strategy:
 
 6. **Merging**:
    - Merge back into `main` using **Normal Merge (`git merge --no-ff`)** to maintain clear release and feature commit history.
+
+7. **Branch Cleanup**:
+   - Always delete the working branch after it has been successfully merged into `main` (`git branch -d <branch-name>`).
+
