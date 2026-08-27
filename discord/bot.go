@@ -1,7 +1,6 @@
 package discord
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -21,18 +20,10 @@ func sendBotMessage(ctx context.Context, client *http.Client, cfg Config, messag
 		Content: message,
 	}
 
-	jsonBytes, err := json.Marshal(payload)
+	req, err := buildHTTPRequest(ctx, apiURL, "Bot "+cfg.BotToken, payload, cfg.FilePath)
 	if err != nil {
-		return 0, fmt.Errorf("failed to encode JSON payload: %w", err)
+		return 0, err
 	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewBuffer(jsonBytes))
-	if err != nil {
-		return 0, fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bot "+cfg.BotToken)
 
 	resp, err := client.Do(req)
 	if err != nil {

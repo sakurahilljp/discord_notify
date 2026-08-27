@@ -28,6 +28,7 @@ type Config struct {
 	ChannelID  string        // Discord Text Channel ID
 	Username   string        // Custom sender username (Webhook only)
 	AvatarURL  string        // Custom avatar image URL (Webhook only)
+	FilePath   string        // Path to image/file attachment to send
 	Timeout    time.Duration // HTTP request timeout (defaults to DefaultTimeout)
 	Retry      int           // Number of retry attempts on failure (defaults to 0)
 	HTTPClient *http.Client  // Optional custom HTTP client
@@ -97,8 +98,8 @@ func NewClient(cfg Config) (*Client, error) {
 
 // Send sends a message to Discord Text Channel using the configured destination (Webhook or Bot).
 func (c *Client) Send(ctx context.Context, message string) error {
-	if strings.TrimSpace(message) == "" {
-		return errors.New("message cannot be empty")
+	if strings.TrimSpace(message) == "" && strings.TrimSpace(c.config.FilePath) == "" {
+		return errors.New("either message or file attachment must be provided")
 	}
 	return sendWithRetry(ctx, c.client, c.config, message)
 }
@@ -123,6 +124,13 @@ func SendFromEnv(ctx context.Context, message string, opts ...Option) error {
 
 // Option defines a functional option for configuring message sending.
 type Option func(*Config)
+
+// WithFile sets an image or file attachment to be sent with the message.
+func WithFile(filePath string) Option {
+	return func(cfg *Config) {
+		cfg.FilePath = filePath
+	}
+}
 
 // WithUsername sets a custom username for Webhook messages.
 func WithUsername(username string) Option {

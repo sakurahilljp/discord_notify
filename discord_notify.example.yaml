@@ -10,6 +10,7 @@ profiles:
     webhook_url: "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
     username: "Dev Notifier"
     avatar_url: "https://example.com/avatar.png"
+    # file_path: "./assets/default_image.png"
     timeout: "5s"
     retry: 1
 

@@ -15,6 +15,7 @@ func TestParseArgs(t *testing.T) {
 		expectedTok          string
 		expectedChan         string
 		expectedUsername     string
+		expectedFilePath     string
 		expectedIgnoreErrors bool
 		expectedTimeout      time.Duration
 		expectedRetry        int
@@ -38,6 +39,20 @@ func TestParseArgs(t *testing.T) {
 			expectedRetry:        3,
 		},
 		{
+			name:             "File attachment with message",
+			argv:             []string{"-w", "https://discord.com/api/webhooks/test", "-f", "./image.png", "Image caption"},
+			expectedMsg:      "Image caption",
+			expectedURL:      "https://discord.com/api/webhooks/test",
+			expectedFilePath: "./image.png",
+		},
+		{
+			name:             "File attachment without message",
+			argv:             []string{"-w", "https://discord.com/api/webhooks/test", "-f", "./only_image.png"},
+			expectedMsg:      "",
+			expectedURL:      "https://discord.com/api/webhooks/test",
+			expectedFilePath: "./only_image.png",
+		},
+		{
 			name:          "Invalid timeout duration error",
 			argv:          []string{"-w", "https://discord.com/api/webhooks/test", "--timeout=invalid", "Hello"},
 			expectedError: true,
@@ -50,6 +65,11 @@ func TestParseArgs(t *testing.T) {
 		{
 			name:          "Missing credentials error",
 			argv:          []string{"Hello World"},
+			expectedError: true,
+		},
+		{
+			name:          "Missing both message and file error",
+			argv:          []string{"-w", "https://discord.com/api/webhooks/test"},
 			expectedError: true,
 		},
 	}
@@ -66,6 +86,9 @@ func TestParseArgs(t *testing.T) {
 				}
 				if tt.expectedURL != "" && cfg.discordConfig.WebhookURL != tt.expectedURL {
 					t.Errorf("expected webhook URL %q, got %q", tt.expectedURL, cfg.discordConfig.WebhookURL)
+				}
+				if tt.expectedFilePath != "" && cfg.discordConfig.FilePath != tt.expectedFilePath {
+					t.Errorf("expected file path %q, got %q", tt.expectedFilePath, cfg.discordConfig.FilePath)
 				}
 				if cfg.ignoreErrors != tt.expectedIgnoreErrors {
 					t.Errorf("expected IgnoreErrors %v, got %v", tt.expectedIgnoreErrors, cfg.ignoreErrors)
@@ -200,4 +223,3 @@ DISCORD_USERNAME="Env User"
 		}
 	})
 }
-

@@ -223,6 +223,42 @@ func main() {
 
 ---
 
+### 6. Send with Image or File Attachments
+You can attach images (PNG, JPEG, GIF, WebP) or files using `WithFile`:
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/sakurahilljp/discord_notify/discord"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Send message with image attachment
+	err := discord.SendWebhook(ctx, "https://discord.com/api/webhooks/...", "Test report attached",
+		discord.WithFile("./screenshot.png"),
+	)
+	if err != nil {
+		log.Fatalf("failed to send: %v", err)
+	}
+
+	// Send image only (without message text)
+	err = discord.SendFromEnv(ctx, "",
+		discord.WithFile("./chart.png"),
+	)
+	if err != nil {
+		log.Fatalf("failed to send: %v", err)
+	}
+}
+```
+
+---
+
 ## 🚀 CLI Installation & Building
 
 ### Using Makefile (Recommended)
@@ -354,6 +390,22 @@ Pipe log outputs or script results directly to Discord.
 
 ```bash
 echo "Disk usage exceeded 80%." | ./discord_notify -w "https://discord.com/api/webhooks/..."
+```
+
+---
+
+### 6. Sending Image or File Attachments
+Use `-f` or `--file` to attach an image (PNG, JPEG, GIF, WebP) or file:
+
+```bash
+# Send an image with a message caption
+./discord_notify -w "https://discord.com/api/webhooks/..." -f ./screenshot.png "Test failure screenshot"
+
+# Send an image only (without message text)
+./discord_notify -p dev -f ./graph.png
+
+# Pipe logs and attach a report file simultaneously
+cat summary.txt | ./discord_notify -f ./coverage.html
 ```
 
 ---

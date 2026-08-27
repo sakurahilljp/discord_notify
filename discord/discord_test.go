@@ -3,8 +3,12 @@ package discord
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -284,6 +288,110 @@ func TestSendBotMessageHelper(t *testing.T) {
 		WithRetry(1),
 		WithTimeout(2*time.Second),
 		WithHTTPClient(server.Client()),
+		WithFile("test.png"),
 	)
 }
 
+func TestSendAttachmentWebhook(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "test_image.png")
+	fileContent := []byte("fake png binary data 12345")
+	if err := os.WriteFile(filePath, fileContent, 0600); err != nil {
+		t.Fatalf("failed to write temp test file: %v", err)
+	}
+
+	expectedMsg := "Here is the screenshot"
+	expectedUser := "ImageBot"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		contentType := r.Header.Get("Content-Type")
+		if !strings.HasPrefix(contentType, "multipart/form-data") {
+			t.Errorf("expected multipart/form-data, got %s", contentType)
+		}
+
+		err := r.ParseMultipartForm(10 << 20)
+		if err != nil {
+			t.Fatalf("failed to parse multipart form: %v", err)
+		}
+
+		// Verify payload_json
+		payloadJSON := r.FormValue("payload_json")
+		var payload webhookPayload
+		if err := json.Unmarshal([]byte(payloadJSON), &payload); err != nil {
+			t.Fatalf("failed to unmarshal payload_json: %v", err)
+		}
+		if payload.Content != expectedMsg {
+			t.Errorf("expected message %q, got %q", expectedMsg, payload.Content)
+		}
+		if payload.Username != expectedUser {
+			t.Errorf("expected username %q, got %q", expectedUser, payload.Username)
+		}
+
+		// Verify file
+		file, header, err := r.FormFile("files[0]")
+		if err != nil {
+			t.Fatalf("failed to get files[0]: %v", err)
+		}
+		defer file.Close()
+
+		if header.Filename != "test_image.png" {
+			t.Errorf("expected filename test_image.png, got %q", header.Filename)
+		}
+		data, err := io.ReadAll(file)
+		if err != nil {
+			t.Fatalf("failed to read form file: %v", err)
+		}
+		if string(data) != string(fileContent) {
+			t.Errorf("expected file content %q, got %q", string(fileContent), string(data))
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	ctx := context.Background()
+	err := SendWebhook(ctx, server.URL, expectedMsg,
+		WithUsername(expectedUser),
+		WithFile(filePath),
+	)
+	if err != nil {
+		t.Fatalf("SendWebhook with attachment failed: %v", err)
+	}
+}
+
+func TestSendAttachmentOnly(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "report.pdf")
+	if err := os.WriteFile(filePath, []byte("pdf data"), 0600); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	ctx := context.Background()
+	// Send without message, only file
+	err := Send(ctx, Config{
+		WebhookURL: server.URL,
+		FilePath:   filePath,
+	}, "")
+	if err != nil {
+		t.Fatalf("expected Send with only file to succeed, got: %v", err)
+	}
+}
+
+func TestSendAttachmentInvalidFile(t *testing.T) {
+	ctx := context.Background()
+	err := Send(ctx, Config{
+		WebhookURL: "https://example.com/webhook",
+		FilePath:   "non_existent_image_file_9999.png",
+	}, "Here is the file")
+	if err == nil {
+		t.Fatal("expected error for non-existent attachment file, got nil")
+	}
+}

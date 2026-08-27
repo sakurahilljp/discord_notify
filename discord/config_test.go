@@ -235,4 +235,3 @@ func TestFindDefaultConfigFile(t *testing.T) {
 		t.Errorf("expected .discord_notify.yaml, got %q", got)
 	}
 }
-

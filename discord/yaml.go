@@ -22,6 +22,7 @@ type YAMLProfile struct {
 	ChannelID  string `yaml:"channel_id"`
 	Username   string `yaml:"username"`
 	AvatarURL  string `yaml:"avatar_url"`
+	FilePath   string `yaml:"file_path"`
 	Timeout    string `yaml:"timeout"`
 	Retry      *int   `yaml:"retry"`
 }
@@ -34,6 +35,7 @@ func (p YAMLProfile) ToConfig() (Config, error) {
 		ChannelID:  p.ChannelID,
 		Username:   p.Username,
 		AvatarURL:  p.AvatarURL,
+		FilePath:   p.FilePath,
 	}
 
 	if p.Timeout != "" {
