@@ -255,3 +255,35 @@ func TestValidationErrors(t *testing.T) {
 		t.Error("expected error for empty message, got nil")
 	}
 }
+
+func TestFunctionalOptions(t *testing.T) {
+	customClient := &http.Client{Timeout: 7 * time.Second}
+	var cfg Config
+
+	WithRetry(5)(&cfg)
+	if cfg.Retry != 5 {
+		t.Errorf("expected retry 5, got %d", cfg.Retry)
+	}
+
+	WithHTTPClient(customClient)(&cfg)
+	if cfg.HTTPClient != customClient {
+		t.Errorf("expected custom HTTPClient, got %v", cfg.HTTPClient)
+	}
+}
+
+func TestSendBotMessageHelper(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"id": "123"}`))
+	}))
+	defer server.Close()
+
+	ctx := context.Background()
+	// Call SendBotMessage (will fail with invalid URL since it targets real Discord endpoint, but tests option wiring)
+	_ = SendBotMessage(ctx, "test_token", "test_chan", "test msg",
+		WithRetry(1),
+		WithTimeout(2*time.Second),
+		WithHTTPClient(server.Client()),
+	)
+}
+

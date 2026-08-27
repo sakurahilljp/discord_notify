@@ -171,6 +171,58 @@ func main() {
 
 ---
 
+### 4. Load from YAML Configuration & Profiles
+You can load configuration from a YAML file for specific profiles (e.g. `dev`, `prod`):
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/sakurahilljp/discord_notify/discord"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Load configuration for profile "prod"
+	cfg, err := discord.LoadYAMLProfile("config.yaml", "prod")
+	if err != nil {
+		log.Fatalf("failed to load YAML config: %v", err)
+	}
+
+	if err := discord.Send(ctx, cfg, "Release deployed!"); err != nil {
+		log.Fatalf("failed to send: %v", err)
+	}
+}
+```
+
+---
+
+### 5. Load from `.env` File
+```go
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/sakurahilljp/discord_notify/discord"
+)
+
+func main() {
+	// Load environment variables from .env if present
+	_ = discord.LoadDotEnvIfExists(".env")
+
+	ctx := context.Background()
+	_ = discord.SendFromEnv(ctx, "Notification with .env loaded.")
+}
+```
+
+---
+
 ## 🚀 CLI Installation & Building
 
 ### Using Makefile (Recommended)
@@ -242,7 +294,61 @@ export DISCORD_CHANNEL_ID="YOUR_CHANNEL_ID"
 
 ---
 
-### 3. Piping from standard input (stdin)
+### 3. Using YAML Configuration File & Profiles
+You can manage multiple notification destinations in a YAML file (`.discord_notify.yaml`, `discord_notify.yaml`, or `~/.config/discord_notify/config.yaml`).
+
+> [!TIP]
+> A template configuration file [`discord_notify.example.yaml`](./discord_notify.example.yaml) and [`.env.example`](./.env.example) are included in this repository.
+
+#### Example YAML Configuration (`.discord_notify.yaml`):
+```yaml
+default_profile: dev
+
+profiles:
+  dev:
+    webhook_url: "https://discord.com/api/webhooks/..."
+    username: "Dev Notifier"
+    timeout: "5s"
+    retry: 1
+
+  prod:
+    webhook_url: "https://discord.com/api/webhooks/..."
+    username: "Release Bot"
+    retry: 3
+
+  bot-alerts:
+    bot_token: "YOUR_BOT_TOKEN"
+    channel_id: "YOUR_CHANNEL_ID"
+    timeout: "15s"
+```
+
+#### Send using default profile
+```bash
+./discord_notify "Build succeeded!"
+```
+
+#### Send using a specific profile
+```bash
+./discord_notify -p prod "Release v1.3.0 deployed."
+./discord_notify --config ./custom-config.yaml -p bot-alerts "Database alert."
+```
+
+---
+
+### 4. Using `.env` File
+`discord_notify` automatically checks and loads `.env` in the current working directory. You can also specify a custom path or disable it:
+
+```bash
+# Load from specific .env file
+./discord_notify --env-file /etc/notify.env "Server restarted."
+
+# Disable loading .env
+./discord_notify --no-env "Message without .env"
+```
+
+---
+
+### 5. Piping from standard input (stdin)
 
 Pipe log outputs or script results directly to Discord.
 
